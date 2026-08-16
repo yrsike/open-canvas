@@ -207,7 +207,7 @@ const VIDEO_MODEL_OPTIONS = listPublicModels({
 const AUDIO_MODEL_OPTIONS = listPublicModels({
   mediaType: AIMediaType.AUDIO,
 });
-const TEXT_MODEL_OPTIONS = ['gemini-3-flash'];
+const TEXT_MODEL_OPTIONS = ['gemini-3-flash', 'deepseek-chat'];
 const IMAGE_RESOLUTION_OPTIONS = ['1K', '2K', '4K'];
 const VIDEO_REFERENCE_MODE_OPTIONS = [
   'auto',

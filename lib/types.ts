@@ -3,7 +3,11 @@ export type WorkflowNodeType = 'note' | 'text' | 'image' | 'video';
 export type WorkflowNodeStatus = 'idle' | 'running' | 'success' | 'error';
 
 export type ProviderKind = 'openrouter' | 'replicate' | 'cyberbara';
-export type StorageProviderKind = 'disabled' | 's3-compatible' | 'cyberbara';
+export type StorageProviderKind =
+  | 'disabled'
+  | 'local'
+  | 's3-compatible'
+  | 'cyberbara';
 
 export interface WorkflowNodeData extends Record<string, unknown> {
   title: string;
@@ -27,6 +31,10 @@ export interface ProviderSettings {
   replicateApiToken: string;
   cyberbaraApiKey: string;
   cyberbaraBaseUrl: string;
+  deepseekApiKey: string;
+  minimaxApiKey: string;
+  tencentSecretId: string;
+  tencentSecretKey: string;
   storageProvider: StorageProviderKind;
   storageS3Endpoint: string;
   storageS3Region: string;

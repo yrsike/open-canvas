@@ -139,6 +139,9 @@ export async function uploadCanvasMedia({
   }
 
   if (settings.storageProvider === 'cyberbara') {
+    if (!settings.cyberbaraApiKey.trim()) {
+      throw new Error('Cyberbara API key is required for Cyberbara storage.');
+    }
     const result = await uploadCyberbaraMedia({
       apiKey: settings.cyberbaraApiKey,
       baseUrl: settings.cyberbaraBaseUrl,

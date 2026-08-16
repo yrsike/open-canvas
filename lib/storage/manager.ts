@@ -1,4 +1,7 @@
+import path from 'node:path';
+
 import { StorageManager } from './core';
+import { LocalStorageProvider } from './local';
 import { S3CompatibleStorageProvider } from './s3-compatible';
 import type { ProviderSettings } from '@/lib/types';
 
@@ -18,6 +21,27 @@ function buildStorageManager(input: {
 }) {
   const manager = new StorageManager();
   const provider = input.provider.trim().toLowerCase();
+
+  if (provider === 'local') {
+    const publicUrlPrefix =
+      input.publicDomain?.trim() ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      '';
+    const rootDir = path.resolve(process.cwd(), 'public', 'uploads');
+
+    manager.addProvider(
+      new LocalStorageProvider({
+        rootDir,
+        publicUrlPrefix: publicUrlPrefix
+          ? `${publicUrlPrefix.replace(/\/+$/, '')}/uploads`
+          : '/uploads',
+        pathPrefix: input.pathPrefix?.trim() || undefined,
+      }),
+      true
+    );
+
+    return manager;
+  }
 
   if (provider === 's3-compatible') {
     const endpoint = input.endpoint.trim();

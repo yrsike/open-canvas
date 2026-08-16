@@ -185,6 +185,65 @@ function ProviderSettingsFields({
               />
               <FieldError message={fieldErrors.cyberbaraBaseUrl} />
             </div>
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="deepseekApiKey">{t('fields.deepseekApiKey')}</Label>
+              <Input
+                id="deepseekApiKey"
+                type="password"
+                value={settings.deepseekApiKey}
+                onChange={(event) =>
+                  onChange('deepseekApiKey', event.target.value)
+                }
+                placeholder="sk-..."
+                className="border-white/10 bg-black/40 text-white"
+              />
+              <FieldError message={fieldErrors.deepseekApiKey} />
+            </div>
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="minimaxApiKey">{t('fields.minimaxApiKey')}</Label>
+              <Input
+                id="minimaxApiKey"
+                type="password"
+                value={settings.minimaxApiKey}
+                onChange={(event) =>
+                  onChange('minimaxApiKey', event.target.value)
+                }
+                placeholder="eyJhbGciOi..."
+                className="border-white/10 bg-black/40 text-white"
+              />
+              <FieldError message={fieldErrors.minimaxApiKey} />
+            </div>
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="tencentSecretId">{t('fields.tencentSecretId')}</Label>
+              <Input
+                id="tencentSecretId"
+                value={settings.tencentSecretId}
+                onChange={(event) =>
+                  onChange('tencentSecretId', event.target.value)
+                }
+                placeholder="AKID..."
+                className="border-white/10 bg-black/40 text-white"
+              />
+              <FieldError message={fieldErrors.tencentSecretId} />
+            </div>
+
+            <div className="grid gap-2 sm:col-span-2">
+              <Label htmlFor="tencentSecretKey">{t('fields.tencentSecretKey')}</Label>
+              <Input
+                id="tencentSecretKey"
+                type="password"
+                value={settings.tencentSecretKey}
+                onChange={(event) =>
+                  onChange('tencentSecretKey', event.target.value)
+                }
+                placeholder="..."
+                className="border-white/10 bg-black/40 text-white"
+              />
+              <FieldError message={fieldErrors.tencentSecretKey} />
+            </div>
           </div>
         </>
       ) : null}
@@ -207,6 +266,7 @@ function ProviderSettingsFields({
             </SelectTrigger>
             <SelectContent className="border-white/10 bg-[#0f1115] text-white">
               <SelectItem value="disabled">{t('storage.disabled')}</SelectItem>
+              <SelectItem value="local">{t('storage.local')}</SelectItem>
               <SelectItem value="cyberbara">{t('storage.cyberbara')}</SelectItem>
               <SelectItem value="s3-compatible">{t('storage.s3')}</SelectItem>
             </SelectContent>

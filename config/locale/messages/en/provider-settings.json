@@ -18,6 +18,10 @@
     "replicateApiToken": "Replicate API token",
     "cyberbaraApiKey": "Cyberbara API key",
     "cyberbaraBaseUrl": "Cyberbara base URL",
+    "deepseekApiKey": "DeepSeek API key",
+    "minimaxApiKey": "MiniMax API key",
+    "tencentSecretId": "Tencent Cloud SecretId",
+    "tencentSecretKey": "Tencent Cloud SecretKey",
     "uploadStorage": "Upload storage",
     "s3Endpoint": "S3 endpoint",
     "s3Region": "S3 region",
@@ -29,6 +33,7 @@
   },
   "storage": {
     "disabled": "Disabled",
+    "local": "Local storage (writes to public/uploads)",
     "cyberbara": "Cyberbara uploads",
     "s3": "S3-compatible"
   },

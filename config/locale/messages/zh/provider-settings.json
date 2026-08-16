@@ -18,6 +18,10 @@
     "replicateApiToken": "Replicate API Token",
     "cyberbaraApiKey": "Cyberbara API Key",
     "cyberbaraBaseUrl": "Cyberbara Base URL",
+    "deepseekApiKey": "DeepSeek API Key",
+    "minimaxApiKey": "MiniMax API Key",
+    "tencentSecretId": "腾讯云 SecretId",
+    "tencentSecretKey": "腾讯云 SecretKey",
     "uploadStorage": "上传存储",
     "s3Endpoint": "S3 Endpoint",
     "s3Region": "S3 区域",
@@ -29,6 +33,7 @@
   },
   "storage": {
     "disabled": "禁用",
+    "local": "本地存储（写入 public/uploads）",
     "cyberbara": "Cyberbara 上传",
     "s3": "S3 兼容存储"
   },
