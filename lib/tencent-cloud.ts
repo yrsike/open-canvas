@@ -20,28 +20,21 @@ function sha256Hex(input: string): Promise<string> {
     });
 }
 
-function hmacSha256Hex(key: CryptoKey | string, message: string): Promise<string> {
-  return crypto.subtle
-    .importKey(
-      'raw',
-      typeof key === 'string'
-        ? new TextEncoder().encode(key)
-        : (key as CryptoKey),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    )
-    .then((importedKey) =>
-      crypto.subtle.sign(
-        'HMAC',
-        importedKey,
-        new TextEncoder().encode(message)
-      )
-    )
-    .then((buffer) => {
-      const bytes = Array.from(new Uint8Array(buffer));
-      return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
-    });
+async function hmacSha256Hex(key: CryptoKey | string, message: string): Promise<string> {
+  const messageBytes = new TextEncoder().encode(message);
+  const cryptoKey =
+    typeof key === 'string'
+      ? await crypto.subtle.importKey(
+          'raw',
+          new TextEncoder().encode(key),
+          { name: 'HMAC', hash: 'SHA-256' },
+          false,
+          ['sign']
+        )
+      : key;
+  const buffer = await crypto.subtle.sign('HMAC', cryptoKey, messageBytes);
+  const bytes = Array.from(new Uint8Array(buffer));
+  return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 function toUTCDateString(timestamp: number): string {
