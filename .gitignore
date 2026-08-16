@@ -10,3 +10,7 @@ node_modules
 tsconfig.tsbuildinfo
 .vercel
 data
+
+# 用户上传文件 (local-first, 不入库)
+public/uploads/**
+!public/uploads/.gitkeep
