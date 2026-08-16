@@ -10,10 +10,10 @@
 const TENCENT_MPS_HOST = 'mps.tencentcloudapi.com';
 const TENCENT_MPS_VERSION = '2019-06-12';
 
-function sha256Hex(input: string): string {
+function sha256Hex(input: string): Promise<string> {
   const data = new TextEncoder().encode(input);
   return crypto.subtle
-    .then((subtle) => subtle.digest('SHA-256', data))
+    .digest('SHA-256', data)
     .then((buffer) => {
       const bytes = Array.from(new Uint8Array(buffer));
       return bytes.map((b) => b.toString(16).padStart(2, '0')).join('');
