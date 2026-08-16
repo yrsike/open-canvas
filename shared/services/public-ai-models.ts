@@ -67,6 +67,9 @@ const PUBLIC_MODEL_LABELS: Record<string, string> = {
   'veo-3.1-quality': 'Veo 3.1 Quality',
   'gemini-omni-video': 'Gemini Omni Video',
   'kling-video-o1': 'Kling Video O1',
+  'minimax-image-01': 'MiniMax Image 01',
+  'minimax-h3': 'MiniMax H3',
+  'tencent-tryon': 'Tencent AI Try-On',
 };
 
 interface ResolvePublicModelRouteInput {
@@ -419,6 +422,26 @@ const PUBLIC_MODEL_REGISTRY: Record<string, PublicModelDefinition> = {
         provider: 'fal',
         model: 'fal-ai/kling-video/o1/video-to-video/edit',
       },
+    },
+  },
+  'minimax-image-01': {
+    mediaType: AIMediaType.IMAGE,
+    scenes: {
+      'text-to-image': { provider: 'minimax', model: 'image-01' },
+      'image-to-image': { provider: 'minimax', model: 'image-01' },
+    },
+  },
+  'minimax-h3': {
+    mediaType: AIMediaType.VIDEO,
+    scenes: {
+      'text-to-video': { provider: 'minimax', model: 'MiniMax-H3' },
+      'image-to-video': { provider: 'minimax', model: 'MiniMax-H3' },
+    },
+  },
+  'tencent-tryon': {
+    mediaType: AIMediaType.IMAGE,
+    scenes: {
+      'image-to-image': { provider: 'tencent-tryon', model: 'WAND-tryon-1.0' },
     },
   },
 };

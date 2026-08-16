@@ -3,6 +3,17 @@ import {
   queryCyberbaraTask,
   runCyberbaraText,
 } from '@/lib/cyberbara';
+import { runDeepseekText } from '@/lib/deepseek';
+import {
+  createMinimaxImageGeneration,
+  createMinimaxVideoGeneration,
+  queryMinimaxImageTask,
+  queryMinimaxVideoTask,
+} from '@/lib/minimax';
+import {
+  createTencentTryOn,
+  queryTencentTryOn,
+} from '@/lib/tencent-cloud';
 import type { ProviderSettings } from '@/lib/types';
 import {
   buildCanvasNodeTaskDescriptor,
@@ -27,10 +38,50 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function getProviderMessage(settings: ProviderSettings) {
-  if (!settings.cyberbaraApiKey.trim()) {
-    throw new Error('Cyberbara API key is required. Open Settings and save your key first.');
+function ensureProviderKeys({
+  settings,
+  providers,
+}: {
+  settings: ProviderSettings;
+  providers: string[];
+}) {
+  const missingKeys: string[] = [];
+
+  if (providers.includes('cyberbara') && !settings.cyberbaraApiKey.trim()) {
+    missingKeys.push('Cyberbara');
   }
+  if (providers.includes('deepseek') && !settings.deepseekApiKey.trim()) {
+    missingKeys.push('DeepSeek');
+  }
+  if (providers.includes('minimax') && !settings.minimaxApiKey.trim()) {
+    missingKeys.push('MiniMax');
+  }
+  if (providers.includes('tencent-tryon')) {
+    if (
+      !settings.tencentSecretId.trim() ||
+      !settings.tencentSecretKey.trim()
+    ) {
+      missingKeys.push('腾讯云 MPS');
+    }
+  }
+  if (providers.includes('openrouter') && !settings.openrouterApiKey.trim()) {
+    missingKeys.push('OpenRouter');
+  }
+  if (providers.includes('replicate') && !settings.replicateApiToken.trim()) {
+    missingKeys.push('Replicate');
+  }
+
+  if (missingKeys.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `缺少提供方 API Key：${missingKeys.join('、')}。请在 Settings 中填写后再运行。`
+  );
+}
+
+function isDeepseekTextModel(model: string) {
+  return model.trim().startsWith('deepseek');
 }
 
 function buildInputSummary(inputs: CanvasMediaTaskDescriptor['inputs'] | CanvasTextTaskDescriptor['inputs']) {
@@ -100,8 +151,6 @@ export async function executeLocalCanvasNode({
   triggerType: 'manual' | 'retry';
   settings: ProviderSettings;
 }) {
-  getProviderMessage(settings);
-
   const canvas = await findLocalCanvasDocumentById(canvasId);
   if (!canvas) {
     throw new Error('canvas not found');
@@ -121,7 +170,23 @@ export async function executeLocalCanvasNode({
     throw new Error(descriptor.message);
   }
 
+  const requiredProviders =
+    descriptor.kind === 'text'
+      ? [isDeepseekTextModel(descriptor.model) ? 'deepseek' : 'cyberbara']
+      : (() => {
+          if (descriptor.provider === 'minimax') return ['minimax'];
+          if (descriptor.provider === 'tencent-tryon') return ['tencent-tryon'];
+          return ['cyberbara'];
+        })();
+  ensureProviderKeys({ settings, providers: requiredProviders });
+
   const nodeData = normalizeCanvasNodeData(node.type, node.data);
+  const resolvedProvider =
+    descriptor.kind === 'media'
+      ? descriptor.provider
+      : isDeepseekTextModel(descriptor.model)
+        ? 'deepseek'
+        : 'cyberbara';
   const run = await createLocalCanvasRun({
     canvasId,
     userId: 'local-user',
@@ -130,7 +195,7 @@ export async function executeLocalCanvasNode({
     status: 'running',
     triggerType,
     scene: descriptor.scene,
-    provider: 'cyberbara',
+    provider: resolvedProvider,
     model: descriptor.model,
     prompt: descriptor.prompt,
     aiTaskId: null,
@@ -156,13 +221,20 @@ export async function executeLocalCanvasNode({
   });
 
   if (descriptor.kind === 'text') {
-    const result = await runCyberbaraText({
-      apiKey: settings.cyberbaraApiKey,
-      model: descriptor.model,
-      prompt: descriptor.userMessage,
-      contextText: [],
-      imageUrls: descriptor.inputs.imageInputs.map((item) => item.url),
-    });
+    const result = isDeepseekTextModel(descriptor.model)
+      ? await runDeepseekText({
+          apiKey: settings.deepseekApiKey,
+          model: descriptor.model,
+          prompt: descriptor.userMessage,
+          contextText: [],
+        })
+      : await runCyberbaraText({
+          apiKey: settings.cyberbaraApiKey,
+          model: descriptor.model,
+          prompt: descriptor.userMessage,
+          contextText: [],
+          imageUrls: descriptor.inputs.imageInputs.map((item) => item.url),
+        });
 
     const completedAt = nowIso();
     await updateLocalCanvasRun({
@@ -205,16 +277,99 @@ export async function executeLocalCanvasNode({
 
   const mediaDescriptor = descriptor as CanvasMediaTaskDescriptor;
   const { mediaUrl, mediaKind } = getPrimaryMediaInput(mediaDescriptor);
-  const result = await createCyberbaraGeneration({
-    apiKey: settings.cyberbaraApiKey,
-    baseUrl: settings.cyberbaraBaseUrl,
-    nodeType: nodeData.nodeType === 'image' ? 'image' : 'video',
-    model: mediaDescriptor.publicModel,
-    prompt: mediaDescriptor.prompt,
-    inputJson: JSON.stringify(mediaDescriptor.options),
-    mediaUrl,
-    mediaKind,
-  });
+  const isMinimax = mediaDescriptor.provider === 'minimax';
+  const isTencentTryOn = mediaDescriptor.provider === 'tencent-tryon';
+
+  let result: {
+    predictionId: string;
+    status: 'success' | 'running' | 'error';
+    outputMediaUrl: string;
+  };
+
+  if (isMinimax && nodeData.nodeType === 'image') {
+    const aspectRatio =
+      typeof mediaDescriptor.options.aspect_ratio === 'string'
+        ? mediaDescriptor.options.aspect_ratio
+        : '1:1';
+    const resolution =
+      typeof mediaDescriptor.options.resolution === 'string'
+        ? mediaDescriptor.options.resolution
+        : '1K';
+    const created = await createMinimaxImageGeneration({
+      apiKey: settings.minimaxApiKey,
+      prompt: mediaDescriptor.prompt,
+      aspectRatio,
+      resolution,
+      subjectReferenceUrl: mediaKind === 'image' ? mediaUrl : null,
+    });
+    const queried = await queryMinimaxImageTask({
+      apiKey: settings.minimaxApiKey,
+      taskId: created.taskId,
+    });
+    result = {
+      predictionId: created.taskId,
+      status: queried.status,
+      outputMediaUrl: queried.outputMediaUrl,
+    };
+  } else if (isMinimax && nodeData.nodeType === 'video') {
+    const duration =
+      typeof mediaDescriptor.options.duration === 'string'
+        ? mediaDescriptor.options.duration
+        : '5';
+    const resolution =
+      typeof mediaDescriptor.options.resolution === 'string'
+        ? mediaDescriptor.options.resolution
+        : '768P';
+    const created = await createMinimaxVideoGeneration({
+      apiKey: settings.minimaxApiKey,
+      prompt: mediaDescriptor.prompt,
+      duration,
+      resolution,
+      firstFrameUrl: mediaKind === 'image' ? mediaUrl : null,
+    });
+    // MiniMax 视频生成耗时较长，创建后先返回 running，由轮询接口继续查询
+    result = {
+      predictionId: created.taskId,
+      status: 'running',
+      outputMediaUrl: '',
+    };
+  } else if (isTencentTryOn) {
+    // 腾讯云换装：第一张输入图 = 模特图，第二张输入图 = 服饰图
+    const modelUrl = mediaDescriptor.inputs.imageInputs[0]?.url ?? mediaUrl;
+    const garmentUrl = mediaDescriptor.inputs.imageInputs[1]?.url ?? '';
+
+    if (!garmentUrl) {
+      throw new Error(
+        '换装需要两张图片：第一张是模特图，第二张是服饰图。请再连接一张服饰图片。'
+      );
+    }
+
+    const created = await createTencentTryOn({
+      secretId: settings.tencentSecretId,
+      secretKey: settings.tencentSecretKey,
+      modelUrl,
+      garmentUrl,
+      model: mediaDescriptor.publicModel || 'WAND-tryon-1.0',
+      prompt: mediaDescriptor.prompt || undefined,
+    });
+    // 换装耗时较长，创建后先返回 running，由轮询接口继续查询
+    result = {
+      predictionId: created.taskId,
+      status: 'running',
+      outputMediaUrl: '',
+    };
+  } else {
+    result = await createCyberbaraGeneration({
+      apiKey: settings.cyberbaraApiKey,
+      baseUrl: settings.cyberbaraBaseUrl,
+      nodeType: nodeData.nodeType === 'image' ? 'image' : 'video',
+      model: mediaDescriptor.publicModel,
+      prompt: mediaDescriptor.prompt,
+      inputJson: JSON.stringify(mediaDescriptor.options),
+      mediaUrl,
+      mediaKind,
+    });
+  }
 
   const nodePatch: CanvasNodePatch = {
     nodeId,
@@ -283,8 +438,6 @@ export async function queryLocalCanvasNodeRun({
   runId: string;
   settings: ProviderSettings;
 }) {
-  getProviderMessage(settings);
-
   const run = await findLocalCanvasRun({ canvasId, runId });
   if (!run) {
     throw new Error('run not found');
@@ -303,11 +456,37 @@ export async function queryLocalCanvasNodeRun({
     };
   }
 
-  const task = await queryCyberbaraTask({
-    apiKey: settings.cyberbaraApiKey,
-    baseUrl: settings.cyberbaraBaseUrl,
-    taskId: run.aiTaskId,
+  const isMinimax = run.provider === 'minimax';
+  const isTencentTryOn = run.provider === 'tencent-tryon';
+  ensureProviderKeys({
+    settings,
+    providers: isMinimax
+      ? ['minimax']
+      : isTencentTryOn
+        ? ['tencent-tryon']
+        : ['cyberbara'],
   });
+  const task = isMinimax
+    ? run.nodeType === 'image'
+      ? await queryMinimaxImageTask({
+          apiKey: settings.minimaxApiKey,
+          taskId: run.aiTaskId,
+        })
+      : await queryMinimaxVideoTask({
+          apiKey: settings.minimaxApiKey,
+          taskId: run.aiTaskId,
+        })
+    : isTencentTryOn
+      ? await queryTencentTryOn({
+          secretId: settings.tencentSecretId,
+          secretKey: settings.tencentSecretKey,
+          taskId: run.aiTaskId,
+        })
+      : await queryCyberbaraTask({
+          apiKey: settings.cyberbaraApiKey,
+          baseUrl: settings.cyberbaraBaseUrl,
+          taskId: run.aiTaskId,
+        });
 
   if (task.status === 'running') {
     const nextRun = await updateLocalCanvasRun({
@@ -329,12 +508,15 @@ export async function queryLocalCanvasNodeRun({
 
   if (task.status === 'error') {
     const completedAt = nowIso();
+    const reason =
+      (task as { errorMessage?: string }).errorMessage?.trim() ||
+      'Generation failed';
     const nextRun = await updateLocalCanvasRun({
       canvasId,
       runId,
       status: 'failed',
       errorCode: 'generation_failed',
-      errorMessage: 'Generation failed',
+      errorMessage: reason,
       finishedAt: completedAt,
       responsePayload: {
         predictionId: task.predictionId,
@@ -343,7 +525,7 @@ export async function queryLocalCanvasNodeRun({
     const nodePatch: CanvasNodePatch = {
       nodeId: run.nodeId,
       status: 'error',
-      errorMessage: 'Generation failed',
+      errorMessage: reason,
       lastRunId: run.id,
       lastCompletedAt: completedAt,
       lastScene: run.scene,

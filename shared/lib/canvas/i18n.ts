@@ -224,5 +224,7 @@ export function translateCanvasRuntimeMessage(
     return t('runtime.maxEdges', { count: maxEdgesMatch[1] });
   }
 
-  return fallbackKey ? t(fallbackKey) : message;
+  // 未匹配时优先返回原始消息（让真实错误透传给用户调试），
+  // 仅在消息为空时才使用 fallback。
+  return normalized || (fallbackKey ? t(fallbackKey) : message);
 }
